@@ -1,7 +1,7 @@
 ---
 title: "Gov 50 Final Project"
 author: "Amelie Julicher"
-description: "My final project"
+description: "Cold War and Trust"
 output:
   distill::distill_article:
     self_contained: false
