@@ -1,6 +1,6 @@
 ---
 title: "Gov 50 Final Project"
-author: "Your Name Here"
+author: "Amelie Julicher"
 description: "My final project"
 output:
   distill::distill_article:
@@ -8,7 +8,213 @@ output:
 ---
 
 
+# The Influence Of The Cold War On Trust Levels In Society 
 
-## Project thoughts
+# Introduction
 
-I am interested in exploring data related to...
+Has the Cold War environment had a lasting effect on people's ability to not only trust each other but also trust government officials? In this study, I plan to examine the extent to which being of voting age before the end of the Cold War shaped people's level of trust today. I hypothesize that the Cold War period had a negative impact on people's trust based on the pervasive atmosphere of suspicion and ideological differences, which fostered a climate of mistrust among citizens as individuals became wary of those who might be perceived as holding opposing political views. In addition, the intense rivalry between the superpowers led to an era of secrecy and government surveillance, eroding trust in government officials as citizens grappled with the realization that their leaders operated in a world of covert strategies and potential existential threats. 
+
+As such, I suspect that people who were of voting age before the end of the Cold War would display lower levels of trust in both categories since they were old enough to be truly impacted by the political environment of the time. Moreover, I plan on looking at two confounding variables in my study. One, whether the person was born in the US, and two, whether their parents were born in the US. I expect that people who were born in the US and were of voting age during the time period would exhibit even lower levels of trust than those not born in the US because the Cold War was especially challenging for people who would strongly identify as American. In line with that, I expect that whether the parents were born in the US would further enhance this effect in the same direction. 
+
+I believe that this is an important research pursuit as it investigates geopolitical events and their long-term effect on human behavior, which is essential for anticipating and mitigating global risks, informing effective policy decisions, and fostering international stability. 
+
+Additionally, understanding how geopolitical changes influence societal behavior helps address the social, economic, and cultural implications that shape the trajectory of nations and regions. Moreover, the question of trust in both people and the government is especially interesting in this era of digitalization and fake news, where trust seems to be constantly wavering. 
+
+
+```{r echo = FALSE}
+library(tidyverse)
+library(readxl)
+
+trust <- read_excel("result/GSS.xlsx")
+
+trust <- trust |> 
+  select(id_, age, born, parborn, trust, year, poleff17) |> 
+  filter(year == 2016) |> 
+  filter(trust %in% c("Can't be too careful", "Can trust")) |>
+  filter(poleff17 %in% c("STRONGLY AGREE", "STRONGLY DISAGREE", "AGREE", "DISAGREE")) |> 
+  filter(born %in% c("YES", "NO")) |> 
+  mutate(Cold_War_Age = if_else(age >= 46, "Of Age", "Not Of Age"), 
+         parents_born = if_else(parborn == "Both born in the u.s.", "YES", "NO"), 
+         trust_in_people = if_else(trust == "Can't be too careful", 0, 1),
+         trust_in_government = if_else(poleff17 == c("STRONGLY DISAGREE", "DISAGREE"), 0, 1))
+
+trust <- trust |> 
+  select(Cold_War_Age, trust_in_government, trust_in_people, born, parents_born)
+
+```
+
+# Explanation Of My Data 
+
+My data set is taken from the General Social Survey. I chose this data set since the General Social Survey (GSS) is a widely used and respected sociological survey. The GSS's reputation in political science research stems from its rigorous methodology, consistent data collection over time, and its ability to provide valuable insights into long-term societal changes and political attitudes. The GSS is conducted in the United States and collects data on various social trends and attitudes through face-to-face interviews with a nationally representative sample of adults. As such, the GSS is a cross-sectional study that is conducted at a specific moment in time. The national representativeness of the sample of adults suggests that the data findings that stem from this data analysis can be applied to the American population as a whole.
+
+While the GSS is conducted annually, I am only focusing on the 2016 data, since this includes the data that is relevant for my research question. The survey covers a vast variety of social and political trends, yet I will focus on the following questions only: 
+
+- age of respondent
+- can people be trusted? 
+- most government administrator's can be trusted 
+- was r born in this country 
+- were r's parents born in this country
+
+# Data Visualization
+
+```{r echo = FALSE}
+
+plot1 <- trust |> 
+  ggplot(mapping = aes(y = trust_in_government)) + 
+  geom_bar() + 
+  labs(x = "Number Of Respondents", 
+       y = "Trust In Government Officials (%)") +
+  theme_minimal() + 
+  labs(caption = "Distribution: Trust in Government")
+
+
+plot2 <- trust |> 
+  ggplot(mapping = aes(y = trust_in_people)) + 
+  geom_bar() + 
+  labs(x = "Number Of Respondents", 
+       y = "Trust In People (%)") +
+  theme_minimal() +
+  labs(caption = "Distribution: Trust in People")
+
+
+
+```
+
+```{r echo = FALSE}
+library(gridExtra)
+
+grid.arrange(plot1, plot2, ncol=2)
+```
+
+
+For my data analysis, I cleaned the data set by mutating the variables mentioned above to take a different value, which will make it easier for me to analyze the data. The explanatory variable is the age of the respondent. The end of the Cold War was in 1991; this means a person must have been 21 years old in 1991, so they must have been born no later than 1970 to be of voting age. As such, a person of voting age must have been at least 46 in 2016, which is the year in which my data was collected. Therefore, the variable (Cold_War_Age) will be coded =Off Age for > 46 and =Not Off Age for < 46. My outcome variables are trust in government (trust_in_government) and trust in people (trust_in_people). The variables are both coded =1 for trust and =0 for no trust. When I run the regression analysis, I will focus on two confounders: 1. whether the respondent is born in the US, which is coded = YES for born in the US and =NO for not born in the US (born). 2. whether the respondent's parents are born, which is coded = YES for born in the US and =NO for not born in the US (parents_born).
+
+# Average Treatment Effects 
+
+```{r echo = FALSE}
+
+ate_people_trust <- trust |> 
+  group_by(Cold_War_Age) |> 
+  summarize(
+    mean_trust_in_people = mean(trust_in_people)) |> 
+  pivot_wider( 
+    names_from = Cold_War_Age, 
+    values_from = mean_trust_in_people) |> 
+  mutate(ate_people_trust = `Of Age` - `Not Of Age`)
+
+knitr::kable(ate_people_trust, digits = 3, col.names = c("Not Of Age", "Of Age", "ATE People"))
+
+```
+
+The calculated means for whether people can be trusted indicate that people who were of age before the Cold War were more likely to belief that people can be trusted (0.339) than people who were not of age (0.211). As such the treatment effect of being of age before the end of the called war is on average 0.128 and actually increases people’s faith in their peers . However, the overall level of trust in people is rather low in the treated as well as untreated group especially compared with the level of trust people indicated to have in the government which was surprisingly significantly higher.
+
+```{r echo = FALSE}
+ate_gov_trust <- trust |> 
+  group_by(Cold_War_Age) |> 
+  summarize(
+    mean_trust_in_government = mean(trust_in_government)) |> 
+  pivot_wider( 
+    names_from = Cold_War_Age, 
+    values_from = mean_trust_in_government) |> 
+  mutate(ate_gov_trust = `Of Age` - `Not Of Age`)
+
+knitr::kable(ate_gov_trust, digits = 3, col.names = c("Not Of Age", "Of Age", "ATE Government"))
+
+
+```
+
+The treated group was still more likely to trust government officials (0.637) than the untreated group (0.613) yet the average treatment effect is less significant than for the other outcome variable (0.025). This is very intriguing and certainly not what I expected. One could think about the possibility of confounding in this scenario. After all, people who were of voting age before the end of the Cold War were also in general older and might thus have had more life experience. As such they might have had more interactions with both people as well as the government in general. This would make one negative experience significantly less important due to the plethora of positive experiences and therefore increase the overall level of trust, and vice versa for younger people. 
+
+```{r echo = FALSE}
+
+plot_trust_gov <- trust |> 
+  group_by(Cold_War_Age) |> 
+  summarize( 
+    mean_trust_in_government = mean(trust_in_government)) |> 
+  ggplot(mapping = aes(y = mean_trust_in_government, x = Cold_War_Age)) + 
+  geom_col() + 
+  labs(x = "Age Of Person Before End Of Cold War", 
+       y = "Trust In Government Officials (%)") + 
+  geom_hline(yintercept = 0.613, linetype = "dashed", color = "red") +
+  theme_minimal() + 
+   labs(caption = "Difference in Trust in Government by Age Group")
+
+```
+
+
+```{r echo=FALSE}
+plot_trust_people <- trust |> 
+  group_by(Cold_War_Age) |> 
+  summarize( 
+    mean_trust_in_people = mean(trust_in_people)) |> 
+  ggplot(mapping = aes(y = mean_trust_in_people, x = Cold_War_Age)) + 
+  geom_col() + 
+   labs(x = "Age Of Person Before End Of Cold War", 
+       y = "Trust In People (%)") + 
+  geom_hline(yintercept = 0.211, linetype = "dashed", color = "red") +
+  theme_minimal() +
+  labs(caption = "Difference in Trust in People by Age Group")
+```
+
+
+```{r echo=FALSE}
+grid.arrange(plot_trust_gov, plot_trust_people, ncol=2)
+```
+
+# Regression Analysis 
+
+
+```{r echo = FALSE}
+
+var_labels <- c( 
+  "Cold_War_AgeOf Age" = "Over 21",
+    "bornYES" = "Born in U.S.",
+    "parents_bornYES" = "Parents born in U.S."
+  )
+
+reg <- lm(trust_in_government ~ Cold_War_Age + born + parents_born, data = trust)
+
+modelsummary::modelsummary(reg,
+                           statistic= c("s.e. = {std.error}",
+                                        "p = {p.value}"),
+                           gof_map = c("nobs", "r.squared", "adj.r.squared"), 
+                           coef_map = var_labels, 
+                               title = "Dependent Variable: Trust in People") 
+```
+
+When looking at the regression analysis focusing on governmental trust one can conclude that being of age increases the level of trust in the government by 0.124 keeping everything else constant. However the p-value of 0.519 indicates that these findings are not statistically significant according to this regression since 0.519 > 0.05, meaning that the difference between both groups is not distinguishable, suggesting that the groups could exhibit the same level of trust despite the difference in age. Looking at the confounder of whether an individual was born in the US, being born in the US decreases the level of trust in the government by -0.055 holding everything constant. Yet, the p-value of 0.647 indicates that these findings are not statistically significant according to the data analysis since again 0.647 > 0.05. Moreover, looking at the confounder of whether an individual's parents were born in the US, parents being born in the US decreases the level of trust in the government by -0.099 holding everything constant. Yet, the p-value of 0.259 indicates that these findings are not statistically significant according to the data since ultimately 0.259 > 0.05.
+
+```{r echo = FALSE}
+
+var_labels <- c( 
+  "Cold_War_AgeOf Age" = "Over 21",
+    "bornYES" = "Born in U.S.",
+    "parents_bornYES" = "Parents born in U.S."
+  )
+
+reg2 <- lm(trust_in_people ~ Cold_War_Age + born + parents_born, data = trust)
+
+
+modelsummary::modelsummary(reg2,
+                           statistic= c("s.e. = {std.error}",
+                                        "p = {p.value}"),
+                           gof_map = c("nobs", "r.squared", "adj.r.squared"), 
+                            coef_map = var_labels,
+                           title = "Dependent Variable: Trust in People")
+
+```
+
+When looking at the regression analysis focusing on the different trust levels in people one can conclude that being of age increases the level of trust in people by 0.036 keeping everything else constant. The p-value of 0.014 indicates that these findings are statistically significant according to this data analysis since 0.014 < 0.05. Looking at the confounder of whether an individual was born in the US, being born in the US decreases the level of trust in people by -0.122 holding everything constant. Yet, the p-value of 0.275 indicates that these findings are not statistically significant according to the regression since 0.275 > 0.05. Lastly, looking at the confounder of whether an individual's parents were born in the US, parents being born in the US increases the level of trust in people by 0.079 holding everything constant. Yet, the p-value of 0.331 indicates that these findings are not statistically significant according to the data since again 0.331 > 0.05.
+
+When thinking about whether or not the coefficient represents a causal effect, one has to consider that the variables are binaries. As such, the variable Cold War Age includes people who were very old and people who had just turned twenty-one, as well as people who were about to turn twenty-one and people who were still young children or were not even born yet. As such, the different people in the same category had various different life experiences, making it difficult to interpret the findings causally. In further steps, one could consider introducing a cut-off age on both sides of the spectrum to narrow down the variety in age within the of-age and not-of-age groups. This would assure that the people just above or just below this newly introduced threshold are similar on average, except for the fact that they are above twenty-one or under twenty-one. This regression discontinuity design (RDD) could help further investigate the causal relationship. 
+ 
+
+
+
+# Conclusion: 
+
+Having conducted the analysis, I have to reject my hypothesis that people who were of voting age before the end of the Cold War display lower levels of trust in people as well as the government. In fact, it appears that people who were of age before the end of the Cold War actually exhibit higher levels of trust. Whether the respondent or their parents were born in the United States decreased levels of trust when everything else was held constant, except for trust in people for those born in the United States. However, based on the regression analysis, the findings were largely not statistically significant, making it difficult to interpret the true meaning, except for the finding that being of age increases the level of trust in people by 0.036, keeping everything else constant. After all, the p-value of 0.014 indicates that these findings are statistically significant according to this data analysis since 0.014 < 0.05. 
+
+However, I would like to admit that there is certainly a threat of interference, because it could be very well possible that the higher levels of trust in people who were of age before the end of the Cold War are not caused or related to the Cold War environment but simply the result of age and maturity. With age, people might simply learn that people and the government can be trusted. Another possible explanation for the unexpected increase in trust with age could be that the levels of trust of younger people today are negatively impacted by the age of digitalization. People are constantly confronted with fake news and conspiracy theories online; it is certainly possible that this had a negative effect on their level of trust and that this effect was greater than that of the Cold War. 
+
+When thinking about new areas for research within the context of this research, I would like to break the age down further to distinguish between people who were of age before the end of the Cold War, of age before the invention of the smartphone, and those who were not of age, if I had more time. This would allow me to further investigate the assumption I made above that digitalization has affected trust levels. In addition, I could include hours spent online as a possible confounder.
